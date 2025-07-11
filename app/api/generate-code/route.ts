@@ -41,8 +41,27 @@ const getBase64Size = (base64String: string): number => {
 };
 
 export async function POST(request: NextRequest) {
+  // 🔍 DEBUG: Log detalhado das env vars
+  const envDebug = {
+    NODE_ENV: process.env.NODE_ENV,
+    API_GATEWAY_BASE_URL: process.env.API_GATEWAY_BASE_URL ? 'SET' : 'NOT_SET',
+    API_GATEWAY_BASE_URL_LENGTH: process.env.API_GATEWAY_BASE_URL?.length || 0,
+    API_GATEWAY_KEY: process.env.API_GATEWAY_KEY ? 'SET' : 'NOT_SET',
+    S3_BUCKET_NAME: process.env.S3_BUCKET_NAME || 'NOT_SET',
+    S3_REGION: process.env.S3_REGION || 'NOT_SET',
+    ACCOUNT_ID: process.env.ACCOUNT_ID ? 'SET' : 'NOT_SET',
+    STEP_FUNCTION_NAME: process.env.STEP_FUNCTION_NAME || 'NOT_SET',
+    ALL_ENV_KEYS: Object.keys(process.env).filter(key => 
+      key.startsWith('API_') || 
+      key.startsWith('S3_') || 
+      key.startsWith('STEP_') ||
+      key.startsWith('ACCOUNT_')
+    )
+  };
+
+  console.log('🔍 POST DEBUG - Environment Variables:', envDebug);
+
   try {
-    // ✅ CORREÇÃO: Verificar env vars dentro da função, não na inicialização
     const API_GATEWAY_BASE_URL = process.env.API_GATEWAY_BASE_URL;
     const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY;
     const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || 'default-bucket';
@@ -50,16 +69,30 @@ export async function POST(request: NextRequest) {
     const ACCOUNT_ID = process.env.ACCOUNT_ID;
     const STEP_FUNCTION_NAME = process.env.STEP_FUNCTION_NAME;
 
+    console.log('🔍 POST DEBUG - After assignment:', {
+      API_GATEWAY_BASE_URL: API_GATEWAY_BASE_URL ? 'SET' : 'NOT_SET',
+      actualValue: API_GATEWAY_BASE_URL?.substring(0, 30) + '...' || 'UNDEFINED'
+    });
+
     // Validar se variáveis essenciais estão configuradas
     if (!API_GATEWAY_BASE_URL) {
+      console.error('❌ API_GATEWAY_BASE_URL is undefined in POST');
+      console.error('🔍 Full process.env keys:', Object.keys(process.env).sort());
+      
       return NextResponse.json(
-        { error: 'API_GATEWAY_BASE_URL não configurada nas environment variables' },
+        { 
+          error: 'API_GATEWAY_BASE_URL não configurada nas environment variables',
+          debug: envDebug,
+          timestamp: new Date().toISOString()
+        },
         { status: 500 }
       );
     }
 
     const body: GenerateCodeRequest = await request.json();
     const { inputType, userStory, files, language, contexto, requestId } = body;
+
+    console.log('🔍 POST DEBUG - Request body parsed successfully');
 
     // Validações baseadas no tipo de entrada
     if (inputType === 'text') {
@@ -86,7 +119,6 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // ✅ CORREÇÃO: Usar função personalizada ao invés de Buffer
         const maxSize = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') 
           ? 10 * 1024 * 1024 // 10MB para PDF
           : 5 * 1024 * 1024;  // 5MB para outros
@@ -119,6 +151,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    console.log('🔍 POST DEBUG - All validations passed');
 
     // Modelos padrão a partir das variáveis de ambiente
     const defaultModels = {
@@ -176,12 +210,17 @@ export async function POST(request: NextRequest) {
       requestHeaders['x-api-key'] = API_GATEWAY_KEY;
     }
 
+    const apiUrl = `${API_GATEWAY_BASE_URL}/generate_code`;
+    console.log('🔍 POST DEBUG - About to call API:', apiUrl.substring(0, 50) + '...');
+
     // Chamar API Gateway
-    const apiResponse = await fetch(`${API_GATEWAY_BASE_URL}/generate_code`, {
+    const apiResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: requestHeaders,
       body: JSON.stringify(uploadPayload),
     });
+
+    console.log('🔍 POST DEBUG - API Response status:', apiResponse.status);
 
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
@@ -201,7 +240,6 @@ export async function POST(request: NextRequest) {
     } catch (parseError) {
       console.error('Response parsing error:', parseError);
       
-      // ✅ CORREÇÃO: Usar env vars ao invés de hardcode
       if (responseText.includes('execution') || responseText.includes('arn:aws:states')) {
         apiData = {
           executionArn: `arn:aws:states:${S3_REGION}:${ACCOUNT_ID}:stateMachine:${STEP_FUNCTION_NAME}:${requestId}`,
@@ -222,6 +260,8 @@ export async function POST(request: NextRequest) {
       throw new Error('URL de download não foi fornecida pela API Gateway');
     }
 
+    console.log('🔍 POST DEBUG - Success! Returning response');
+
     // Retornar resposta para o frontend
     return NextResponse.json({
       success: true,
@@ -235,7 +275,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Generate code error:', error);
+    console.error('❌ Generate code error:', error);
     
     return NextResponse.json(
       { 
@@ -249,7 +289,16 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  // ✅ CORREÇÃO: Env vars dentro da função
+  // 🔍 DEBUG: Log detalhado das env vars para GET também
+  const envDebug = {
+    NODE_ENV: process.env.NODE_ENV,
+    API_GATEWAY_BASE_URL: process.env.API_GATEWAY_BASE_URL ? 'SET' : 'NOT_SET',
+    API_GATEWAY_BASE_URL_LENGTH: process.env.API_GATEWAY_BASE_URL?.length || 0,
+    actualValue: process.env.API_GATEWAY_BASE_URL?.substring(0, 30) + '...' || 'UNDEFINED'
+  };
+
+  console.log('🔍 GET DEBUG - Environment Variables:', envDebug);
+
   const API_GATEWAY_BASE_URL = process.env.API_GATEWAY_BASE_URL;
   const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY;
   const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || 'default-bucket';
@@ -261,6 +310,7 @@ export async function GET() {
       version: process.env.APP_VERSION || '2.2.0',
       environment: process.env.APP_ENVIRONMENT || 'development',
       status: 'API Gateway Integration Active - S3 Upload Architecture',
+      debug: envDebug,
       configuration: {
         apiGatewayConfigured: !!API_GATEWAY_BASE_URL,
         s3Bucket: S3_BUCKET_NAME,
