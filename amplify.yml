@@ -3,36 +3,43 @@ frontend:
   phases:
     preBuild:
       commands:
+        - echo "Starting preBuild phase..."
+        - node --version
+        - npm --version
         - npm ci
+        - echo "Dependencies installed successfully"
     build:
       commands:
-        # Transferir variáveis específicas para .env.production
-        - env | grep -e API_GATEWAY_BASE_URL >> .env.production
-        - env | grep -e API_GATEWAY_KEY >> .env.production
-        - env | grep -e API_GATEWAY_REGION >> .env.production
-        - env | grep -e API_GATEWAY_STAGE >> .env.production
-        - env | grep -e S3_BUCKET_NAME >> .env.production
-        - env | grep -e S3_REGION >> .env.production
-        - env | grep -e DEFAULT_EXTRACT_MODEL_FAMILY >> .env.production
-        - env | grep -e DEFAULT_EXTRACT_MODEL_NAME >> .env.production
-        - env | grep -e DEFAULT_EXTRACT_MODEL_ID >> .env.production
-        - env | grep -e DEFAULT_GENERATE_MODEL_FAMILY >> .env.production
-        - env | grep -e DEFAULT_GENERATE_MODEL_NAME >> .env.production
-        - env | grep -e DEFAULT_GENERATE_MODEL_ID >> .env.production
-        - env | grep -e DEFAULT_BDD_MODEL_FAMILY >> .env.production
-        - env | grep -e DEFAULT_BDD_MODEL_NAME >> .env.production
-        - env | grep -e DEFAULT_BDD_MODEL_ID >> .env.production
-        - env | grep -e APP_VERSION >> .env.production
-        - env | grep -e APP_ENVIRONMENT >> .env.production
-        - env | grep -e MAX_FILE_SIZE_MB >> .env.production
-        - env | grep -e MAX_CONTENT_LENGTH >> .env.production
-        - env | grep -e SUPPORTED_FILE_EXTENSIONS >> .env.production
-        - env | grep -e POLLING_MAX_ATTEMPTS >> .env.production
-        - env | grep -e POLLING_INTERVAL_MS >> .env.production
-        - env | grep -e POLLING_TIMEOUT_SECONDS >> .env.production
-        # Transferir todas as variáveis NEXT_PUBLIC_
-        - env | grep -e NEXT_PUBLIC_ >> .env.production
+        - echo "Starting build phase..."
+        # Criar arquivo .env.production se não existir
+        - touch .env.production
+        # Adicionar variáveis de ambiente de forma segura
+        - if [ ! -z "$API_GATEWAY_BASE_URL" ]; then echo "API_GATEWAY_BASE_URL=$API_GATEWAY_BASE_URL" >> .env.production; fi
+        - if [ ! -z "$API_GATEWAY_KEY" ]; then echo "API_GATEWAY_KEY=$API_GATEWAY_KEY" >> .env.production; fi
+        - if [ ! -z "$S3_BUCKET_NAME" ]; then echo "S3_BUCKET_NAME=$S3_BUCKET_NAME" >> .env.production; fi
+        - if [ ! -z "$S3_REGION" ]; then echo "S3_REGION=$S3_REGION" >> .env.production; fi
+        - if [ ! -z "$DEFAULT_EXTRACT_MODEL_FAMILY" ]; then echo "DEFAULT_EXTRACT_MODEL_FAMILY=$DEFAULT_EXTRACT_MODEL_FAMILY" >> .env.production; fi
+        - if [ ! -z "$DEFAULT_EXTRACT_MODEL_NAME" ]; then echo "DEFAULT_EXTRACT_MODEL_NAME=$DEFAULT_EXTRACT_MODEL_NAME" >> .env.production; fi
+        - if [ ! -z "$DEFAULT_EXTRACT_MODEL_ID" ]; then echo "DEFAULT_EXTRACT_MODEL_ID=$DEFAULT_EXTRACT_MODEL_ID" >> .env.production; fi
+        - if [ ! -z "$DEFAULT_GENERATE_MODEL_FAMILY" ]; then echo "DEFAULT_GENERATE_MODEL_FAMILY=$DEFAULT_GENERATE_MODEL_FAMILY" >> .env.production; fi
+        - if [ ! -z "$DEFAULT_GENERATE_MODEL_NAME" ]; then echo "DEFAULT_GENERATE_MODEL_NAME=$DEFAULT_GENERATE_MODEL_NAME" >> .env.production; fi
+        - if [ ! -z "$DEFAULT_GENERATE_MODEL_ID" ]; then echo "DEFAULT_GENERATE_MODEL_ID=$DEFAULT_GENERATE_MODEL_ID" >> .env.production; fi
+        - if [ ! -z "$DEFAULT_BDD_MODEL_FAMILY" ]; then echo "DEFAULT_BDD_MODEL_FAMILY=$DEFAULT_BDD_MODEL_FAMILY" >> .env.production; fi
+        - if [ ! -z "$DEFAULT_BDD_MODEL_NAME" ]; then echo "DEFAULT_BDD_MODEL_NAME=$DEFAULT_BDD_MODEL_NAME" >> .env.production; fi
+        - if [ ! -z "$DEFAULT_BDD_MODEL_ID" ]; then echo "DEFAULT_BDD_MODEL_ID=$DEFAULT_BDD_MODEL_ID" >> .env.production; fi
+        - if [ ! -z "$APP_VERSION" ]; then echo "APP_VERSION=$APP_VERSION" >> .env.production; fi
+        - if [ ! -z "$APP_ENVIRONMENT" ]; then echo "APP_ENVIRONMENT=$APP_ENVIRONMENT" >> .env.production; fi
+        - if [ ! -z "$MAX_FILE_SIZE_MB" ]; then echo "MAX_FILE_SIZE_MB=$MAX_FILE_SIZE_MB" >> .env.production; fi
+        - if [ ! -z "$POLLING_MAX_ATTEMPTS" ]; then echo "POLLING_MAX_ATTEMPTS=$POLLING_MAX_ATTEMPTS" >> .env.production; fi
+        - if [ ! -z "$POLLING_INTERVAL_MS" ]; then echo "POLLING_INTERVAL_MS=$POLLING_INTERVAL_MS" >> .env.production; fi
+        - if [ ! -z "$POLLING_TIMEOUT_SECONDS" ]; then echo "POLLING_TIMEOUT_SECONDS=$POLLING_TIMEOUT_SECONDS" >> .env.production; fi
+        # Adicionar variáveis NEXT_PUBLIC_
+        - env | grep -e NEXT_PUBLIC_ >> .env.production || echo "No NEXT_PUBLIC_ variables found"
+        - echo "Environment variables configured:"
+        - cat .env.production
+        - echo "Starting Next.js build..."
         - npm run build
+        - echo "Build completed successfully"
   artifacts:
     baseDirectory: .next
     files:
