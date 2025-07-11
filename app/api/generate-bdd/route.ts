@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_GATEWAY_BASE_URL = process.env.API_GATEWAY_BASE_URL;
-const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY;
-
-// Validar se variáveis essenciais estão configuradas
-if (!API_GATEWAY_BASE_URL) {
-  throw new Error('API_GATEWAY_BASE_URL não configurada no .env.local');
-}
-
 export async function POST(request: NextRequest) {
   try {
+    // ✅ CORREÇÃO: Mover env vars para dentro da função
+    const API_GATEWAY_BASE_URL = process.env.API_GATEWAY_BASE_URL;
+    const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY;
+
+    // Validar se variáveis essenciais estão configuradas
+    if (!API_GATEWAY_BASE_URL) {
+      return NextResponse.json(
+        { error: 'API_GATEWAY_BASE_URL não configurada nas environment variables' },
+        { status: 500 }
+      );
+    }
+
     const { code, language, requestId } = await request.json();
     
     if (!code || code.trim() === '') {
@@ -130,11 +134,19 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+  // ✅ CORREÇÃO: Env vars dentro da função
+  const API_GATEWAY_BASE_URL = process.env.API_GATEWAY_BASE_URL;
+  const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY;
+
   return NextResponse.json(
     { 
       message: 'Endpoint para geração de testes BDD',
       version: '4.0.0',
       status: 'Step Functions + S3 Polling + Bedrock Integration',
+      configuration: {
+        apiGatewayConfigured: !!API_GATEWAY_BASE_URL,
+        hasApiKey: !!API_GATEWAY_KEY
+      },
       architecture: 'API Gateway -> Step Function BDD -> generate_bdd_teste (Bedrock) -> S3 -> presigned URL',
       requiredPayload: {
         code: 'string (código para gerar testes)',

@@ -1,16 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Configuração segura usando variáveis de ambiente
-const API_GATEWAY_BASE_URL = process.env.API_GATEWAY_BASE_URL;
-const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY;
-const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
-const S3_REGION = process.env.S3_REGION || 'us-east-1';
-
-// Validar se variáveis essenciais estão configuradas
-if (!API_GATEWAY_BASE_URL) {
-  throw new Error('API_GATEWAY_BASE_URL não configurada no .env.local');
-}
-
 interface FileData {
   name: string;
   type: string;
@@ -43,8 +32,32 @@ const validateFileType = (fileName: string, fileType: string): boolean => {
          supportedMimeTypes.includes(fileType);
 };
 
+// Função para calcular tamanho do base64 sem Buffer
+const getBase64Size = (base64String: string): number => {
+  if (!base64String) return 0;
+  // Calcular tamanho aproximado sem usar Buffer
+  const padding = (base64String.match(/=/g) || []).length;
+  return Math.floor((base64String.length * 3) / 4) - padding;
+};
+
 export async function POST(request: NextRequest) {
   try {
+    // ✅ CORREÇÃO: Verificar env vars dentro da função, não na inicialização
+    const API_GATEWAY_BASE_URL = process.env.API_GATEWAY_BASE_URL;
+    const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY;
+    const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || 'default-bucket';
+    const S3_REGION = process.env.S3_REGION || 'us-east-1';
+    const ACCOUNT_ID = process.env.ACCOUNT_ID;
+    const STEP_FUNCTION_NAME = process.env.STEP_FUNCTION_NAME;
+
+    // Validar se variáveis essenciais estão configuradas
+    if (!API_GATEWAY_BASE_URL) {
+      return NextResponse.json(
+        { error: 'API_GATEWAY_BASE_URL não configurada nas environment variables' },
+        { status: 500 }
+      );
+    }
+
     const body: GenerateCodeRequest = await request.json();
     const { inputType, userStory, files, language, contexto, requestId } = body;
 
@@ -73,12 +86,12 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Validar tamanho (PDFs podem ser maiores)
+        // ✅ CORREÇÃO: Usar função personalizada ao invés de Buffer
         const maxSize = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') 
           ? 10 * 1024 * 1024 // 10MB para PDF
           : 5 * 1024 * 1024;  // 5MB para outros
 
-        const contentSize = file.content ? Buffer.from(file.content, 'base64').length : 0;
+        const contentSize = getBase64Size(file.content);
         if (contentSize > maxSize) {
           return NextResponse.json(
             { error: `Arquivo ${file.name} muito grande. Máximo: ${maxSize / (1024 * 1024)}MB` },
@@ -142,7 +155,6 @@ export async function POST(request: NextRequest) {
       uploadPayload.userStory = userStory;
       uploadPayload.contextualInfo = contexto || "";
     } else if (inputType === 'file') {
-      // Continua enviando arquivos em base64 - agora serão salvos no S3 pela Lambda
       uploadPayload.files = files?.map(file => ({
         name: file.name,
         type: file.type,
@@ -164,7 +176,7 @@ export async function POST(request: NextRequest) {
       requestHeaders['x-api-key'] = API_GATEWAY_KEY;
     }
 
-    // Chamar API Gateway (agora aponta para Lambda de Upload)
+    // Chamar API Gateway
     const apiResponse = await fetch(`${API_GATEWAY_BASE_URL}/generate_code`, {
       method: 'POST',
       headers: requestHeaders,
@@ -189,11 +201,11 @@ export async function POST(request: NextRequest) {
     } catch (parseError) {
       console.error('Response parsing error:', parseError);
       
-      // Se não é JSON, provavelmente a Step Function foi iniciada mesmo assim
+      // ✅ CORREÇÃO: Usar env vars ao invés de hardcode
       if (responseText.includes('execution') || responseText.includes('arn:aws:states')) {
-        // Criar resposta padrão assumindo que funcionou
         apiData = {
-          executionArn: `arn:aws:states:${S3_REGION}:${process.env.ACCOUNT_ID}:stateMachine:${process.env.STEP_FUNCTION_NAME}:${requestId}`,
+          executionArn: `arn:aws:states:${S3_REGION}:${ACCOUNT_ID}:stateMachine:${STEP_FUNCTION_NAME}:${requestId}`,
+          downloadUrl: `https://${S3_BUCKET_NAME}.s3.${S3_REGION}.amazonaws.com/FileCode-${Math.floor(Date.now() / 1000)}.json`,
           uploadedFiles: []
         };
       } else {
@@ -237,6 +249,12 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+  // ✅ CORREÇÃO: Env vars dentro da função
+  const API_GATEWAY_BASE_URL = process.env.API_GATEWAY_BASE_URL;
+  const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY;
+  const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || 'default-bucket';
+  const S3_REGION = process.env.S3_REGION || 'us-east-1';
+
   return NextResponse.json(
     { 
       message: 'Endpoint para geração de código',
@@ -254,44 +272,11 @@ export async function GET() {
       },
       supportedLanguages: ['python', 'java'],
       supportedInputTypes: ['text', 'file'],
-      architecture: 'Next.js → API Gateway → Lambda Upload → S3 → Step Function → Lambdas → S3 → Polling',
+      architecture: 'Next.js → API Gateway → Processing Pipeline → Storage → Polling',
       polling: {
         maxAttempts: parseInt(process.env.POLLING_MAX_ATTEMPTS || '30'),
         intervalMs: parseInt(process.env.POLLING_INTERVAL_MS || '2000'),
         timeoutSeconds: parseInt(process.env.POLLING_TIMEOUT_SECONDS || '300')
-      },
-      models: {
-        default: {
-          extractHistory: {
-            family: process.env.DEFAULT_EXTRACT_MODEL_FAMILY || "amazon",
-            model: process.env.DEFAULT_EXTRACT_MODEL_NAME || "nova-pro"
-          },
-          generateCode: {
-            family: process.env.DEFAULT_GENERATE_MODEL_FAMILY || "amazon",
-            model: process.env.DEFAULT_GENERATE_MODEL_NAME || "nova-pro"
-          }
-        }
-      },
-      payloadExamples: {
-        text: {
-          inputType: 'text',
-          userStory: 'Como usuário, quero...',
-          language: 'python|java',
-          contexto: 'string (optional)',
-          requestId: 'uuid'
-        },
-        file: {
-          inputType: 'file',
-          files: '[{name, type, content, category}]',
-          language: 'python|java',
-          contexto: 'string (optional)',
-          requestId: 'uuid'
-        }
-      },
-      newArchitecture: {
-        description: 'Arquivos são salvos no S3 antes da Step Function para contornar limitações de tamanho',
-        uploadProcess: 'Lambda Upload → S3 Storage → Step Function com referências',
-        benefits: ['Suporte a arquivos maiores', 'Melhor performance', 'Menor payload na Step Function']
       }
     },
     { status: 200 }
