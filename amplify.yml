@@ -6,6 +6,32 @@ frontend:
         - npm ci
     build:
       commands:
+        # Transferir variáveis específicas para .env.production
+        - env | grep -e API_GATEWAY_BASE_URL >> .env.production
+        - env | grep -e API_GATEWAY_KEY >> .env.production
+        - env | grep -e API_GATEWAY_REGION >> .env.production
+        - env | grep -e API_GATEWAY_STAGE >> .env.production
+        - env | grep -e S3_BUCKET_NAME >> .env.production
+        - env | grep -e S3_REGION >> .env.production
+        - env | grep -e DEFAULT_EXTRACT_MODEL_FAMILY >> .env.production
+        - env | grep -e DEFAULT_EXTRACT_MODEL_NAME >> .env.production
+        - env | grep -e DEFAULT_EXTRACT_MODEL_ID >> .env.production
+        - env | grep -e DEFAULT_GENERATE_MODEL_FAMILY >> .env.production
+        - env | grep -e DEFAULT_GENERATE_MODEL_NAME >> .env.production
+        - env | grep -e DEFAULT_GENERATE_MODEL_ID >> .env.production
+        - env | grep -e DEFAULT_BDD_MODEL_FAMILY >> .env.production
+        - env | grep -e DEFAULT_BDD_MODEL_NAME >> .env.production
+        - env | grep -e DEFAULT_BDD_MODEL_ID >> .env.production
+        - env | grep -e APP_VERSION >> .env.production
+        - env | grep -e APP_ENVIRONMENT >> .env.production
+        - env | grep -e MAX_FILE_SIZE_MB >> .env.production
+        - env | grep -e MAX_CONTENT_LENGTH >> .env.production
+        - env | grep -e SUPPORTED_FILE_EXTENSIONS >> .env.production
+        - env | grep -e POLLING_MAX_ATTEMPTS >> .env.production
+        - env | grep -e POLLING_INTERVAL_MS >> .env.production
+        - env | grep -e POLLING_TIMEOUT_SECONDS >> .env.production
+        # Transferir todas as variáveis NEXT_PUBLIC_
+        - env | grep -e NEXT_PUBLIC_ >> .env.production
         - npm run build
   artifacts:
     baseDirectory: .next
