@@ -154,7 +154,7 @@ export async function GET() {
         requestId: 'string (opcional)'
       },
       endpoints: {
-        POST: '/api/generate-bdd - Inicia Step Function BDD e retorna presignedUrl para polling'
+        POST: '/api/generate-bdd - Inicia Step Function BDD e retorna presignedUrl para polling.'
       }
     },
     { status: 200 }
