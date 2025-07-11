@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
       if (responseText.includes('execution') || responseText.includes('arn:aws:states')) {
         // Criar resposta padrão assumindo que funcionou
         apiData = {
-          executionArn: `arn:aws:states:${S3_REGION}:${process.env.AWS_ACCOUNT_ID}:stateMachine:${process.env.STEP_FUNCTION_NAME}:${requestId}`,
+          executionArn: `arn:aws:states:${S3_REGION}:${process.env.ACCOUNT_ID}:stateMachine:${process.env.STEP_FUNCTION_NAME}:${requestId}`,
           uploadedFiles: []
         };
       } else {
